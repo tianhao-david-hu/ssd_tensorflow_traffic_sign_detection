@@ -7,7 +7,7 @@ import re
 import os
 from PIL import Image
 import ntpath
-
+from settings import GRAYSCALE, PARTIAL_DATASET
 DATA_ANNOTATIONS = "./original_data/allAnnotations.csv"
 IDX_DICT = {"FileName": 0,
             "AnnotationTag": 1,
@@ -18,13 +18,12 @@ IDX_DICT = {"FileName": 0,
             }
 
 RESIZE_IMAGE = True  # resize the images and write to 'resized_images/'
-GRAYSCALE = True  # convert image to grayscale? this option is only valid if RESIZE_IMAGE==True (FIXME)
 TARGET_W, TARGET_H = 400, 260  # 1.74 is weighted avg ratio, but 1.65 aspect ratio is close enough (1.65 was for stop signs)
 
 input_root_folder = "original_data/"
 output_root_folder = "processed_data/"
 
-if (1):
+if (PARTIAL_DATASET==True):
     sign_map = {'stop': 1, 'pedestrianCrossing': 2}  # only 2 sign classes (background class is 0)
 else:
     sign_map = {}  # sign_name -> integer_label
@@ -32,8 +31,9 @@ else:
         for line in f:
             line = line[:-1]  # strip newline at the end
             integer_label, sign_name = line.split(',')
+            print(sign_name)
             sign_map[sign_name] = int(integer_label)
-
+print(sign_map)
 merged_annotations = []
 with open(input_root_folder+'allAnnotations.csv', 'r') as f:
     for line in f:
@@ -49,31 +49,42 @@ with open(DATA_ANNOTATIONS, 'r') as csvfile:
         # Get signname
         sign_name = row[IDX_DICT["AnnotationTag"]]
         # Skip it is not of interest
-        bIfNeeded = False
-        for name in sign_map:
-            # if sign_name == 'stop' or sign_name == 'pedestrianCrossing':
-            if sign_name == 'pedestrianCrossing':
-                bIfNeeded = True
-                break  # ignore signs that are neither stop nor pedestrianCrossing signs
-        if (bIfNeeded != True):
-            continue
+        if (PARTIAL_DATASET == True):
+            bIfNeeded = False
+            for name in sign_map:
+                if sign_name == 'stop' or sign_name == 'pedestrianCrossing':
+                #if sign_name == 'pedestrianCrossing':
+                    bIfNeeded = True
+                    break  # ignore signs that are neither stop nor pedestrianCrossing signs
+            if (bIfNeeded != True):
+                continue
         image_files.append(row[IDX_DICT["FileName"]])
 
 # Create raw data pickle file
 data_raw = {}
-
+ii=0
 for image_file in image_files:
     # Find box coordinaimage_filetes for all signs in this image
     class_list = []
     box_coords_list = []
     for line in merged_annotations:
+        if(image_file[0]=='a'):
+            continue
         if re.search(image_file, line):
             fields = line.split(';')
 
             # Get sign name and assign class label
             sign_name = fields[1]
-            if sign_name != 'stop' and sign_name != 'pedestrianCrossing':
-                continue  # ignore signs that are neither stop nor pedestrianCrossing signs
+            if (PARTIAL_DATASET == True):
+                bIfNeeded = False
+                for name in sign_map:
+                    if sign_name == 'stop' or sign_name == 'pedestrianCrossing':
+                        # if sign_name == 'pedestrianCrossing':
+                        bIfNeeded = True
+                        break  # ignore signs that are neither stop nor pedestrianCrossing signs
+                if (bIfNeeded != True):
+                    continue
+            #print(image_file)
             sign_class = sign_map[sign_name]
             class_list.append(sign_class)
 
@@ -108,8 +119,13 @@ for image_file in image_files:
                 new_box_coords = (ulc_x * x_scale, ulc_y * y_scale, lrc_x * x_scale, lrc_y * y_scale)
                 new_box_coords = [round(x) for x in new_box_coords]
                 box_coords = np.array(new_box_coords)
+                ii=ii+1
+                print(ii)
 
             box_coords_list.append(box_coords)
+
+    #if ii>20:
+    #    break;
 
     if len(class_list) == 0:
         continue  # ignore images with no signs-of-interest
@@ -122,7 +138,36 @@ for image_file in image_files:
         d = {'class': class_list[i], 'box_coords': box_coords_list[i]}
         the_list.append(d)
 
-    data_raw[image_file] = the_list
+
+
+    data_raw[output_root_folder+image_file] = the_list
+
+
+
+with open(output_root_folder+'data_raw_%dx%d.csv' % (TARGET_W, TARGET_H), 'w') as csvfile:
+    fieldnames = ["Filename",
+                  "Annotation tag",
+                  "Upper left corner X",
+                  "Upper left corner Y",
+                  "Lower right corner X",
+                  "Lower right corner Y"]
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+    writer.writeheader()
+    for image_file in image_files:
+        if (image_file[0] == 'a'):
+            continue
+        #print(data)
+        the_list=data_raw[output_root_folder+image_file]
+        for d in the_list:
+            writer.writerow({'Filename': output_root_folder+image_file,
+                             'Annotation tag': d['class'],
+                             'Upper left corner X': d['box_coords'][0],
+                             'Upper left corner Y': d['box_coords'][1],
+                             'Lower right corner X': d['box_coords'][2],
+                             'Lower right corner Y': d['box_coords'][3],})
+
+
 
 with open(output_root_folder+'data_raw_%dx%d.p' % (TARGET_W, TARGET_H), 'wb') as f:
     pickle.dump(data_raw, f)

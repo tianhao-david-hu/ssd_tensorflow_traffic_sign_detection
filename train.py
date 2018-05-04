@@ -41,7 +41,7 @@ def next_batch(X, y_conf, y_loc, batch_size):
 		images = []
 		for image_file in image_files:
 			#image = Image.open('resized_images_%sx%s/%s' % (IMG_W, IMG_H, image_file))
-			image = Image.open(output_root_folder+image_file)
+			image = Image.open(image_file)
 			image = np.asarray(image)
 			images.append(image)
 
@@ -206,6 +206,16 @@ def run_training():
 			print('Epoch %d -- Train loss: %.4f, Validation loss: %.4f, Elapsed time: %.2f sec' %\
 				(epoch+1, train_loss, valid_loss, time.time() - last_time))
 			last_time = time.time()
+
+			if SAVE_MODEL:
+				# Save model to disk
+				save_path = saver.save(sess, MODEL_SAVE_PATH)
+				print('Trained model saved at: %s' % save_path)
+
+				# Also save accuracy history
+				print('Loss history saved at loss_history.p')
+				with open('loss_history.p', 'wb') as f:
+					pickle.dump(loss_history, f)
 
 		total_time = time.time() - train_start_time
 		print('Total elapsed time: %d min %d sec' % (total_time/60, total_time%60))

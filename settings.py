@@ -11,8 +11,9 @@ DEFAULT_BOXES = ((-0.5, -0.5, 0.5, 0.5), (0.2, 0.2, -0.2, -0.2), (-0.8, -0.2, 0.
 NUM_DEFAULT_BOXES = len(DEFAULT_BOXES)
 
 # Constants (TODO: Keep this updated as we go along)
-NUM_CLASSES = 3  # 2 signs + 1 background class
-NUM_CHANNELS = 1  # grayscale->1, RGB->3
+PARTIAL_DATASET=False
+NUM_CLASSES = 1+47  # 2 signs + 1 background class
+NUM_CHANNELS = 3  # grayscale->1, RGB->3
 NUM_PRED_CONF = NUM_DEFAULT_BOXES * NUM_CLASSES  # number of class predictions per feature map cell
 NUM_PRED_LOC  = NUM_DEFAULT_BOXES * 4  # number of localization regression predictions per feature map cell
 
@@ -38,14 +39,20 @@ else:
 	raise NotImplementedError('Model not implemented')
 
 # Model hyper-parameters
-OPT = tf.train.AdadeltaOptimizer()
+OPT = tf.train.AdadeltaOptimizer(learning_rate=0.001)
+#OPT = tf.train.AdadeltaOptimizer()
 REG_SCALE = 1e-2  # L2 regularization strength
 LOC_LOSS_WEIGHT = 1.  # weight of localization loss: loss = conf_loss + LOC_LOSS_WEIGHT * loc_loss
 
 # Training process
-RESUME = False  # resume training from previously saved model?
-NUM_EPOCH = 200
-BATCH_SIZE = 32  # batch size for training (relatively small)
+RESUME = True# resume training from previously saved model?
+NUM_EPOCH = 40
+BATCH_SIZE = 24  # batch size for training (relatively small)
 VALIDATION_SIZE = 0.05  # fraction of total training set to use as validation set
 SAVE_MODEL = True  # save trained model to disk?
 MODEL_SAVE_PATH = './model/model.ckpt'  # where to save trained model
+
+if(NUM_CHANNELS ==1):
+	GRAYSCALE = True
+elif(NUM_CHANNELS==3):
+	GRAYSCALE = False
