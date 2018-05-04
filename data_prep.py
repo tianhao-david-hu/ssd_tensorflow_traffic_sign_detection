@@ -6,6 +6,8 @@ import numpy as np
 import pickle
 
 
+output_root_folder = "processed_data/"
+
 def calc_iou(box_a, box_b):
 	"""
 	Calculate the Intersection Over Union of two boxes
@@ -128,13 +130,13 @@ def do_data_prep(data_raw):
 
 
 if __name__ == '__main__':
-	with open('data_raw_%sx%s.p' % (IMG_W, IMG_H), 'rb') as f:
+	with open(output_root_folder+'data_raw_%sx%s.p' % (IMG_W, IMG_H), 'rb') as f:
 		data_raw = pickle.load(f)
 
 	print('Preparing data (i.e. matching boxes)')
 	data_prep = do_data_prep(data_raw)
 
-	with open('data_prep_%sx%s.p' % (IMG_W, IMG_H), 'wb') as f:
+	with open(output_root_folder+'data_prep_%sx%s.p' % (IMG_W, IMG_H), 'wb') as f:
 		pickle.dump(data_prep, f)
 
 	print('Done. Saved prepared data to data_prep_%sx%s.p' % (IMG_W, IMG_H))

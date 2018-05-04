@@ -14,6 +14,7 @@ import time
 import pickle
 from PIL import Image
 
+output_root_folder = "processed_data/"
 
 def next_batch(X, y_conf, y_loc, batch_size):
 	"""
@@ -39,7 +40,8 @@ def next_batch(X, y_conf, y_loc, batch_size):
 		# Read images from image_files
 		images = []
 		for image_file in image_files:
-			image = Image.open('resized_images_%sx%s/%s' % (IMG_W, IMG_H, image_file))
+			#image = Image.open('resized_images_%sx%s/%s' % (IMG_W, IMG_H, image_file))
+			image = Image.open(output_root_folder+image_file)
 			image = np.asarray(image)
 			images.append(image)
 
@@ -96,7 +98,7 @@ def run_training():
 	Save model
 	"""
 	# Load training and test data
-	with open('data_prep_%sx%s.p' % (IMG_W, IMG_H), mode='rb') as f:
+	with open(output_root_folder+'data_prep_%sx%s.p' % (IMG_W, IMG_H), mode='rb') as f:
 		train = pickle.load(f)
 	#with open('test.p', mode='rb') as f:
 	#	test = pickle.load(f)
