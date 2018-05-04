@@ -39,9 +39,12 @@ def readAnnotation(fileName):
     Read in CSV
     '''
 
+    # Create raw data pickle file
+    data_raw = {}
+    image_file=[]
     class_list = []
     box_coords_list = []
-
+    output_root_folder="processed_data/"
     label_set = set()
     with open(fileName, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=';')
@@ -53,6 +56,7 @@ def readAnnotation(fileName):
             bIfNeeded=False
             for name in sign_map:
                 if sign_name == 'stop' or sign_name == 'pedestrianCrossing':
+                #if sign_name == 'pedestrianCrossing':
                     bIfNeeded=True
                     break  # ignore signs that are neither stop nor pedestrianCrossing signs
             if(bIfNeeded!=True):
@@ -61,8 +65,9 @@ def readAnnotation(fileName):
             sign_class = sign_map[sign_name]
             class_list.append(sign_class)
             original_filename="original_data/" + row[IDX_DICT["FileName"]]
-            processed_filename="processed_data/" + row[IDX_DICT["FileName"]]
-
+            processed_filename=output_root_folder + row[IDX_DICT["FileName"]]
+            image_file.append(processed_filename)
+            print(image_file[-1])
             # Resize image, get rescaled box coordinates
             box_coords = np.array([int(x) for x in row[2:6]])
 
@@ -94,8 +99,21 @@ def readAnnotation(fileName):
             box_coords_list.append(box_coords)
 
             label_set.add(row[IDX_DICT["AnnotationTag"]])
-            #class_list = np.array(class_list)
-            #box_coords_list = np.array(box_coords_list)
+        class_list = np.array(class_list)
+        box_coords_list = np.array(box_coords_list)
+
+        # Create the list of dicts
+        the_list = []
+        for i in range(len(box_coords_list)):
+            d = {'class': class_list[i], 'box_coords': box_coords_list[i]}
+            the_list.append(d)
+
+        #data_raw[image_file] = the_list
+        data_raw = dict(zip(image_file, the_list))
+
+        with open(output_root_folder + 'data_raw_%dx%d.p' % (TARGET_W, TARGET_H), 'wb') as f:
+            pickle.dump(data_raw, f)
+        print(data_raw)
 
     return label_set
 
