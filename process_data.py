@@ -6,8 +6,9 @@ import pickle
 import re
 import os
 from PIL import Image
+import ntpath
 
-DATA_ANNOTATIONS = "../data/allAnnotations.csv"
+DATA_ANNOTATIONS = "./original_data/allAnnotations.csv"
 IDX_DICT = {"FileName":0,
             "AnnotationTag":1,
             "UpperLeftX": 2,
@@ -30,6 +31,9 @@ else:
             integer_label, sign_name = line.split(',')
             sign_map[sign_name] = int(integer_label)
 
+
+
+
 def readAnnotation(fileName):
     '''
     Read in CSV
@@ -38,45 +42,67 @@ def readAnnotation(fileName):
     class_list = []
     box_coords_list = []
 
-    csvList = []
     label_set = set()
     with open(fileName, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=';')
         next(reader)
         for row in reader:
+            #Get signname
             sign_name = row[IDX_DICT["AnnotationTag"]]
-
-            if sign_name != 'stop' and sign_name != 'pedestrianCrossing':
-                continue  # ignore signs that are neither stop nor pedestrianCrossing signs
+            #Skip it is not of interest
+            bIfNeeded=False
+            for name in sign_map:
+                if sign_name == 'stop' or sign_name == 'pedestrianCrossing':
+                    bIfNeeded=True
+                    break  # ignore signs that are neither stop nor pedestrianCrossing signs
+            if(bIfNeeded!=True):
+                continue
 
             sign_class = sign_map[sign_name]
-            row[IDX_DICT["FileName"]] = "data/" + row[IDX_DICT["FileName"]]
-
-            image = Image.open(row[IDX_DICT["FileName"]])
-            orig_w, orig_h = image.size
+            class_list.append(sign_class)
+            original_filename="original_data/" + row[IDX_DICT["FileName"]]
+            processed_filename="processed_data/" + row[IDX_DICT["FileName"]]
 
             # Resize image, get rescaled box coordinates
             box_coords = np.array([int(x) for x in row[2:6]])
-            # Rescale box coordinates
-            x_scale = TARGET_W / orig_w
-            y_scale = TARGET_H / orig_h
 
-            ulc_x, ulc_y, lrc_x, lrc_y = box_coords
-            new_box_coords = (ulc_x * x_scale, ulc_y * y_scale, lrc_x * x_scale, lrc_y * y_scale)
-            new_box_coords = [round(x) for x in new_box_coords]
-            box_coords = np.array(new_box_coords)
+            if RESIZE_IMAGE:
 
+                image = Image.open(original_filename)
+                orig_w, orig_h = image.size
 
-            csvList.append(row)
+                if GRAYSCALE:
+                    image = image.convert('L')  # 8-bit grayscale
+                image = image.resize((TARGET_W, TARGET_H), Image.LANCZOS)  # high-quality downsampling filter
+
+                file_name_only=ntpath.basename(processed_filename)
+                file_name_only_length=len(file_name_only)
+                path_without_name=processed_filename[:-file_name_only_length]
+
+                if not os.path.exists(path_without_name):
+                    os.makedirs(path_without_name)
+                image.save(processed_filename)
+
+                # Rescale box coordinates
+                x_scale = TARGET_W / orig_w
+                y_scale = TARGET_H / orig_h
+
+                ulc_x, ulc_y, lrc_x, lrc_y = box_coords
+                new_box_coords = (ulc_x * x_scale, ulc_y * y_scale, lrc_x * x_scale, lrc_y * y_scale)
+                new_box_coords = [round(x) for x in new_box_coords]
+                box_coords = np.array(new_box_coords)
+            box_coords_list.append(box_coords)
+
             label_set.add(row[IDX_DICT["AnnotationTag"]])
+            #class_list = np.array(class_list)
+            #box_coords_list = np.array(box_coords_list)
 
-    shuffle(csvList)
-    return csvList, label_set
+    return label_set
 
 
 def main():
-    csvList, label_set = readAnnotation(DATA_ANNOTATIONS)
-    print(csvList)
+    label_set = readAnnotation(DATA_ANNOTATIONS)
+    print(label_set)
 
 
 
